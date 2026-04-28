@@ -8,9 +8,9 @@ use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -27,36 +27,46 @@ class AuthenticatedSessionController extends Controller
         ]);
     }
 
-public function store(LoginRequest $request): RedirectResponse
+    public function store(LoginRequest $request): RedirectResponse
     {
-        // 1. Authenticate locally first (so Laravel knows who is logged in)
-        $request->authenticate();
-        $request->session()->regenerate();
-
-        // 2. NOW, authenticate with the RS Delta Surya API to get the Bearer Token 
-        // Note: The payload requires the phone number formatted as 08xxxxx as the password 
+        // 1. FIRST: Authenticate with the RS Delta Surya API to get the Bearer Token
+        // (API is the source of truth for credentials)
         $apiResponse = Http::post('https://recruitment.rsdeltasurya.com/api/v1/auth', [
             'email' => $request->email,
-            'password' => $request->password, 
+            'password' => $request->password,
         ]);
 
-        if ($apiResponse->successful()) {
-            // 3. Save the token to the session so other controllers can use it!
-            $data = $apiResponse->json();
-            session(['api_token' => $data['access_token']]);
-        } else {
-            // If the API rejects them, log them out locally and throw an error
-            Auth::guard('web')->logout();
-            $request->session()->invalidate();
-            $request->session()->regenerateToken();
-            
+        if (! $apiResponse->successful()) {
+            // API rejected credentials
             return back()->withErrors([
-                'email' => 'Failed to authenticate with RS Delta Surya API.',
-            ]);
+                'email' => 'These credentials do not match our records.',
+            ])->onlyInput('email');
         }
 
-        // 4. Redirect to dashboard
-        return redirect()->intended(route('dashboard', absolute: false));
+        // 2. API authentication successful! Save the token
+        $data = $apiResponse->json();
+        session(['api_token' => $data['access_token']]);
+
+        // 3. Create OR Find the user locally
+        $user = User::firstOrCreate(
+            ['email' => $request->email],
+            [
+                'name' => 'Syahrul Ramadhan',
+                'password' => bcrypt(Str::random(16)),
+                'role' => 'kasir', // Default role when you first log in
+            ]
+        );
+
+        // 4. Authenticate locally and regenerate session
+        Auth::login($user, $request->boolean('remember'));
+        $request->session()->regenerate();
+
+        // 5. Redirect based on local role
+        if ($user->role === 'marketing') {
+            return redirect()->route('vouchers.index');
+        } else {
+            return redirect()->route('transactions.index');
+        }
     }
 
     /**

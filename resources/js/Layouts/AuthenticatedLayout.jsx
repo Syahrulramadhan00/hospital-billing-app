@@ -3,6 +3,7 @@ import { Menu, ChevronDown, Home, Calendar, Ticket, BarChart3, Settings, User, H
 
 export default function AuthenticatedLayout({ header, children }) {
     const user = usePage().props.auth.user;
+    const userRole = user?.role || 'kasir'; // Default to kasir
 
     const navigation = [
         {
@@ -10,20 +11,26 @@ export default function AuthenticatedLayout({ header, children }) {
             icon: Home,
             href: route('dashboard'),
             active: route().current('dashboard'),
+            roles: ['kasir', 'marketing'],
         },
         {
             name: 'Transactions',
             icon: Handshake,
             href: route('transactions.index'),
             active: route().current('transactions.index'),
+            roles: ['kasir'],
         },
         {
             name: 'Vouchers',
             icon: Ticket,
             href: route('vouchers.index'),
             active: route().current('vouchers.index'),
+            roles: ['marketing'],
         },
     ];
+
+    // Filter navigation based on user role
+    const filteredNavigation = navigation.filter(item => item.roles.includes(userRole));
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-base-200 via-base-100 to-base-200">
@@ -95,7 +102,7 @@ export default function AuthenticatedLayout({ header, children }) {
                         </div>
                         {/* Navigation Items */}
                         <ul className="menu w-full flex-1 px-4 py-4 gap-1 text-base">
-                            {navigation.map((item, index) => {
+                            {filteredNavigation.map((item, index) => {
                                 const Icon = item.icon;
                                 
                                 return item.children ? (

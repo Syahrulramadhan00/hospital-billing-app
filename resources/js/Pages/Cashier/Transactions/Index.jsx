@@ -168,9 +168,9 @@ export default function TransactionIndex({ transactions, insurances, procedures,
                                         <td>{trx.cashier?.name}</td>
                                         <td className="font-bold text-primary">{formatRp(trx.final_amount)}</td>
                                         <td>
-                                            <button className="btn btn-ghost btn-sm text-primary gap-2">
+                                            <a href={route('transactions.print', trx.id)} target="_blank" rel="noopener noreferrer" className="btn btn-ghost btn-sm text-primary gap-2">
                                                 <FileText className="w-4 h-4"/> PDF
-                                            </button>
+                                            </a>
                                         </td>
                                     </tr>
                                 ))

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Transaction;
 use App\Models\TransactionDetail;
 use App\Models\Voucher;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
@@ -137,5 +138,23 @@ class TransactionController extends Controller
 
             return redirect()->back()->withErrors(['error' => 'Failed to process transaction: '.$e->getMessage()]);
         }
+    }
+
+    /**
+     * PRINT RECEIPT: Generate PDF receipt for a transaction
+     */
+    public function printReceipt(Transaction $transaction)
+    {
+        // Load the transaction details
+        $transaction->load('details', 'cashier');
+
+        // Generate PDF from blade view
+        $pdf = Pdf::loadView('pdf.receipt', ['transaction' => $transaction]);
+
+        // Set paper size to A5 (receipt size)
+        $pdf->setPaper('A5', 'portrait');
+
+        // Stream the PDF to browser
+        return $pdf->stream('Receipt-' . $transaction->invoice_number . '.pdf');
     }
 }

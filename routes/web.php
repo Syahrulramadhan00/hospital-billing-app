@@ -2,8 +2,8 @@
 
 use App\Http\Controllers\InsuranceController;
 use App\Http\Controllers\ProfileController;
-use App\Http\Controllers\VoucherController;
 use App\Http\Controllers\TransactionController;
+use App\Http\Controllers\VoucherController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -30,17 +30,23 @@ Route::middleware('auth')->group(function () {
     Route::resource('insurance', InsuranceController::class);
 });
 
-
 Route::middleware(['auth'])->group(function () {
     Route::get('/dashboard', function () {
         return Inertia::render('Dashboard');
     })->name('dashboard');
 
-    // Vouchers & Transactions
-    Route::resource('vouchers', VoucherController::class);
-    Route::resource('transactions', TransactionController::class);
-    
-    // --> ADD THIS NEW PROXY ROUTE <--
+    // Vouchers - Marketing Only
+    Route::middleware('role:marketing')->group(function () {
+        Route::resource('vouchers', VoucherController::class);
+    });
+
+    // Transactions - Cashier Only
+    Route::middleware('role:kasir')->group(function () {
+        Route::resource('transactions', TransactionController::class);
+        Route::get('/transactions/{transaction}/print', [TransactionController::class, 'printReceipt'])->name('transactions.print');
+    });
+
+    // API Routes - Both roles
     Route::get('/api/procedures/{id}/price', [TransactionController::class, 'getPrice'])->name('api.procedures.price');
 });
 
